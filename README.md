@@ -6,6 +6,9 @@
 - [Installation](#installation)
   - [Swift Package Manager](#swift-package-manager)
 - [Getting Started](#getting-started)
+  - [Advance Usage](#advance-usage)
+    - [Cancel Action](#cancel-action)
+    - [Internal Mutating](#internal-mutating)
 - [Test](#test)
 - [Contribution](#contribution)
 - [License](#license)
@@ -21,7 +24,7 @@
 ## Swift Package Manager
 ```swift
 dependencies: [
-    .package(url: "https://github.com/wlsdms0122/Reducer.git", exact: "1.0.0")
+    .package(url: "https://github.com/wlsdms0122/Reducer.git", exact: "1.1.0")
 ]
 ```
 
@@ -48,7 +51,7 @@ final class CounterReduce: Reduce {
         var count: Int
     }
 
-    weak var mutator: (any Mutator<Mutation>)?
+    var mutator: (any Mutator<Mutation, State>)?
     var initialState: State
 
     init(initialState: State) {
@@ -121,6 +124,89 @@ class CounterViewController: UIViewController {
 
     @IBAction func increaseTap(_ sender: UIButton) {
         reducer.action(.increase)
+    }
+}
+```
+
+## Advance Usage
+### Cancel Action
+You can cancel running action task using `shouldCancel(_:_:) -> Bool`.
+
+For example, if you want to cancel validating user input for each keystroke to efficiently use resources, `Reducer` can determine whether the current running task should be canceled before creating a new task action. If `shouldCancel(_:_:)` returns `true`, the current action should be canceled.
+
+```swift
+final class SignUpReduce: Reduce {
+    enum Action {
+        case emailChanged(String)
+    }
+
+    enum Mutation {
+        case canSignUp(Bool)
+    }
+
+    struct State {
+        var canSignUp: Bool
+    }
+
+    var mutator: (any Mutator<Mutation, State>)?
+    var initialState: State
+
+    private let validator = EmailValidator()
+
+    init() {
+        initialState = State(canSignUp: false)
+    }
+
+    func mutate(state: State, action: Action) async throws {
+        switch action {
+        case let .emailChanged(email):
+            let result = try await validator.validate(email)
+            mutate(.canSignUp(result))
+        }
+    }
+
+    func shouldCancel(_ current: ActionItem, _ upcoming: ActionItem) -> Bool {
+        switch (current.action, upcoming.action) {
+        case (.emailChanged, .emailChanged):
+            return true
+        }
+    }
+}
+```
+
+### Internal Mutating
+The reducer sometimes needs to mutate state without explicit outside action like some domain data changed.
+
+In these case, you can use `start(with:)` function. It call once when `Reducer` set `Reduce`. So you can any initialize process with mutations.
+
+```swift
+final class ListReduce: Reduce {
+    enum Action { ... }
+
+    enum Mutation {
+        case setList([Item])
+        ...
+    }
+
+    struct State {
+        var list: [Item]
+        ...
+    }
+
+    var mutator: (any Mutator<Mutation, State>)?
+    var initialState: State
+    
+    init() { ... }
+
+    func start(with mutator: any Mutator<Mutation, State>) async throws {
+        NotificationCenter.default.publisher(for: .init("data_changed"))
+            .sink { data in 
+                /* Write any mutates here. */
+                mutator(.setList($0.object))
+            }
+            // You can mutator scope cancellable bag.
+            // It all cancel when mutator(reducer) deinit.
+            .store(in: mutator.cancellableBag)
     }
 }
 ```
