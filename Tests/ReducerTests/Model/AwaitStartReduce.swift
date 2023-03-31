@@ -1,15 +1,16 @@
 //
-//  CountIncreaseReduce.swift
+//  AwaitStartReduce.swift
 //  
 //
-//  Created by JSilver on 2023/03/07.
+//  Created by JSilver on 2023/03/31.
 //
 
+import Foundation
 import Reducer
 
-class CountIncreaseReduce: Reduce {
+class AwaitStartReduce: Reduce {
     enum Action {
-        case increase
+        case empty
     }
 
     enum Mutation {
@@ -30,13 +31,13 @@ class CountIncreaseReduce: Reduce {
     }
 
     // MARK: - Lifecycle
+    func start(with mutator: any Mutator<Mutation, State>) async throws {
+        try await Task.sleep(nanoseconds: 10_000_000)
+        mutator.mutate(.increase)
+    }
+    
     func mutate(state: State, action: Action) async throws {
-        switch action {
-        case .increase:
-            // Increase count after waiting 0.1 sec.
-            try await Task.sleep(nanoseconds: 10_000_000)
-            mutate(.increase)
-        }
+        
     }
 
     func reduce(state: State, mutation: Mutation) -> State {
