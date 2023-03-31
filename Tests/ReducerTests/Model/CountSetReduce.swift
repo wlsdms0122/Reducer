@@ -21,7 +21,7 @@ class CountSetReduce: Reduce {
     }
 
     // MARK: - Property
-    weak var mutator: (any Mutator<Mutation>)?
+    var mutator: (any Mutator<Mutation, State>)?
     var initialState: State
 
     // MARK: - Initializer

@@ -9,35 +9,6 @@ import XCTest
 @testable import Reducer
 import Combine
 
-import SwiftUI
-
-struct CounterView: View {
-    var body: some View { Text("") }
-    
-    @StateObject
-    var reducer: Reducer<CountIncreaseReduce>
-
-    init(reducer: Reducer<CountIncreaseReduce>) {
-        self._reducer = .init(wrappedValue: reducer)
-    }
-}
-struct MyPreviewProvider_Previews: PreviewProvider {
-    static var previews: some View {
-        CounterView(reducer: .init(proxy: .init(
-            initialState: .init(count: 0),
-            mutate: { state, action, mutate in
-                
-            },
-            reduce: { state, mutation in
-                return state
-            },
-            shouldCancel: { current, upcoming in
-                return false
-            }
-        )))
-    }
-}
-
 @MainActor
 final class ReducerTests: XCTestCase {
     // MARK: - Property
@@ -123,13 +94,29 @@ final class ReducerTests: XCTestCase {
         XCTAssertEqual(result, [0])
     }
     
+    func test_that_count_increases_when_mutate_in_start() async throws {
+        // Given
+        let reducer = Reducer(TimerReduce(
+            initialState: .init(count: 0)
+        ))
+        
+        // When
+        let result = try await wait(
+            reducer.$state.map(\.count),
+            timeout: 1
+        )
+        
+        // Then
+        XCTAssertGreaterThan(result.last ?? 0, 0)
+    }
+    
     func test_that_reducer_should_be_able_to_assign_proxy_reduce() async throws {
         // Given
         var reducer = Reducer(CountIncreaseReduce(
             initialState: .init(count: 0)
         ))
         
-        reducer = Reducer<CountIncreaseReduce>(
+        reducer = Reducer<CountIncreaseReduce>(proxy: .init(
             initialState: .init(count: 0),
             mutate: { state, action, mutate in
                 switch action {
@@ -147,7 +134,7 @@ final class ReducerTests: XCTestCase {
                     return state
                 }
             }
-        )
+        ))
         
         // When
         Task {
@@ -165,11 +152,11 @@ final class ReducerTests: XCTestCase {
     
     func test_that_initial_count_is_100_when_proxy_set_initial_count() async throws {
         // Given
-        let reducer = Reducer<CountIncreaseReduce>(
+        let reducer = Reducer<CountIncreaseReduce>(proxy: .init(
             initialState: .init(
                 count: 100
             )
-        )
+        ))
         
         // When
         let result = try await wait(
@@ -183,7 +170,7 @@ final class ReducerTests: XCTestCase {
     
     func test_that_count_increases_when_proxy_receiving_increase_action() async throws {
         // Given
-        let reducer = Reducer<CountIncreaseReduce>(
+        let reducer = Reducer<CountIncreaseReduce>(proxy: .init(
             initialState: .init(count: 0),
             mutate: { state, action, mutate in
                 switch action {
@@ -201,7 +188,7 @@ final class ReducerTests: XCTestCase {
                     return state
                 }
             }
-        )
+        ))
         
         // When
         Task {
@@ -219,7 +206,7 @@ final class ReducerTests: XCTestCase {
     
     func test_that_count_increases_10_when_proxy_receiving_increase_action() async throws {
         // Given
-        let reducer = Reducer<CountIncreaseReduce>(
+        let reducer = Reducer<CountIncreaseReduce>(proxy: .init(
             initialState: .init(count: 0),
             mutate: { state, action, mutate in
                 switch action {
@@ -237,7 +224,7 @@ final class ReducerTests: XCTestCase {
                     return state
                 }
             }
-        )
+        ))
         
         // When
         Task {
@@ -256,7 +243,7 @@ final class ReducerTests: XCTestCase {
     
     func test_that_count_does_not_mutate_when_proxy_same_action_twice() async throws {
         // Given
-        let reducer = Reducer<CountIncreaseReduce>(
+        let reducer = Reducer<CountIncreaseReduce>(proxy: .init(
             initialState: .init(count: 0),
             mutate: { state, action, mutate in
                 switch action {
@@ -277,7 +264,7 @@ final class ReducerTests: XCTestCase {
             shouldCancel: { current, upcoming in
                 current.action == upcoming.action
             }
-        )
+        ))
         
         // When
         Task {
@@ -291,6 +278,37 @@ final class ReducerTests: XCTestCase {
         
         // Then
         XCTAssertEqual(result, [0, 1])
+    }
+    
+    func test_that_count_increases_when_proxy_mutate_in_start() async throws {
+        // Given
+        let reducer = Reducer<TimerReduce>(proxy: .init(
+            initialState: .init(count: 0),
+            start: { mutator in
+                Timer.publish(every: 0.1, on: .main, in: .default)
+                    .autoconnect()
+                    .sink { _ in mutator(.increase) }
+                    .store(in: &mutator.cancellableBag)
+            },
+            reduce: { state, mutation in
+                var state = state
+                
+                switch mutation {
+                case .increase:
+                    state.count += 1
+                    return state
+                }
+            }
+        ))
+        
+        // When
+        let result = try await wait(
+            reducer.$state.map(\.count),
+            timeout: 1
+        )
+        
+        // Then
+        XCTAssertGreaterThan(result.last ?? 0, 0)
     }
     
     func test_that_reducer_can_assign_proxy_inherited_reduce() async throws {
@@ -313,5 +331,4 @@ final class ReducerTests: XCTestCase {
         // Then
         XCTAssertEqual(result, [0, 10])
     }
-    
 }
