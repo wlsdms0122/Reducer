@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import Combine
 
 @MainActor
 final class TaskBag<Item> {
@@ -74,23 +75,26 @@ open class Reducer<R: Reduce>: ObservableObject, Mutator {
     // MARK: - Property
     @Published
     public private(set) var state: State
+    public let initialState: State
     
-    private var reduce: ProxyReduce<R>
+    private let reduce: ProxyReduce<R>
+    
+    public var cancellableBag = Set<AnyCancellable>()
     private let taskBag = TaskBag<R.ActionItem>()
     
     // MARK: - Initalizer
-    public init(_ reduce: R) {
-        self.state = reduce.initialState
-        self.reduce = ProxyReduce(reduce)
-        
-        reduce.mutator = self
-    }
-    
     public init(proxy reduce: ProxyReduce<R>) {
-        self.state = reduce.initialState
         self.reduce = reduce
         
-        reduce.mutator = self
+        self.state = reduce.initialState
+        self.initialState = reduce.initialState
+        
+        // Start reduce with mutator.
+        self.reduce.start(with: ProxyMutator(self))
+    }
+    
+    public convenience init(_ reduce: R) {
+        self.init(proxy: ProxyReduce(reduce))
     }
     
     // MARK: - Lifecycle
@@ -128,21 +132,5 @@ open class Reducer<R: Reduce>: ObservableObject, Mutator {
     // MARK: - Private
     private func reduce(mutation: Mutation) {
         state = reduce(state: state, mutation: mutation)
-    }
-}
-
-public extension Reducer {
-    convenience init(
-        initialState: State,
-        mutate: ((State, Action, @escaping R.Mutate) async throws -> Void)? = nil,
-        reduce: ((State, Mutation) -> State)? = nil,
-        shouldCancel: ((R.ActionItem, R.ActionItem) -> Bool)? = nil
-    ) {
-        self.init(proxy: .init(
-            initialState: initialState,
-            mutate: mutate,
-            reduce: reduce,
-            shouldCancel: shouldCancel
-        ))
     }
 }
