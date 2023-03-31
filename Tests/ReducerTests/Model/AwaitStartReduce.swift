@@ -1,5 +1,5 @@
 //
-//  TimerReduce.swift
+//  AwaitStartReduce.swift
 //  
 //
 //  Created by JSilver on 2023/03/31.
@@ -8,7 +8,7 @@
 import Foundation
 import Reducer
 
-class TimerReduce: Reduce {
+class AwaitStartReduce: Reduce {
     enum Action {
         case empty
     }
@@ -32,10 +32,8 @@ class TimerReduce: Reduce {
 
     // MARK: - Lifecycle
     func start(with mutator: any Mutator<Mutation, State>) async throws {
-        Timer.publish(every: 0.1, on: .main, in: .default)
-            .autoconnect()
-            .sink { _ in mutator(.increase) }
-            .store(in: &mutator.cancellableBag)
+        try await Task.sleep(nanoseconds: 10_000_000)
+        mutator.mutate(.increase)
     }
     
     func mutate(state: State, action: Action) async throws {

@@ -90,7 +90,9 @@ open class Reducer<R: Reduce>: ObservableObject, Mutator {
         self.initialState = reduce.initialState
         
         // Start reduce with mutator.
-        self.reduce.start(with: ProxyMutator(self))
+        Task {
+            try await self.reduce.start(with: ProxyMutator(self))
+        }
     }
     
     public convenience init(_ reduce: R) {

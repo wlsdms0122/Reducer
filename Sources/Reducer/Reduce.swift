@@ -19,7 +19,7 @@ public protocol Reduce: AnyObject {
     var mutator: (any Mutator<Mutation, State>)? { get set }
     var initialState: State { get }
     
-    func start(with mutator: any Mutator<Mutation, State>)
+    func start(with mutator: any Mutator<Mutation, State>) async throws
     
     func mutate(state: State, action: Action) async throws
     func reduce(state: State, mutation: Mutation) -> State
@@ -27,8 +27,8 @@ public protocol Reduce: AnyObject {
 }
 
 public extension Reduce {
-    func start(with mutator: any Mutator<Mutation, State>) {
-        
+    func start(with mutator: any Mutator<Mutation, State>) async throws {
+
     }
     
     func shouldCancel(_ current: ActionItem, _ upcoming: ActionItem) -> Bool {
@@ -61,7 +61,7 @@ open class ProxyReduce<R: Reduce>: Reduce {
     
     private let _setMutator: (((any Mutator<Mutation, State>)?) -> Void)?
     
-    private let _start: ((any Mutator<Mutation, State>) -> Void)?
+    private let _start: ((any Mutator<Mutation, State>) async throws -> Void)?
     private let _mutate: ((State, Action, @escaping Mutate) async throws -> Void)?
     private let _reduce: ((State, Mutation) -> State)?
     private let _shouldCancel: ((ActionItem, ActionItem) -> Bool)?
@@ -70,7 +70,7 @@ open class ProxyReduce<R: Reduce>: Reduce {
     public init(
         initialState: State,
         setMutator: (((any Mutator<Mutation, State>)?) -> Void)? = nil,
-        start: ((any Mutator<Mutation, State>) -> Void)? = nil,
+        start: ((any Mutator<Mutation, State>) async throws -> Void)? = nil,
         mutate: ((State, Action, @escaping Mutate) async throws -> Void)? = nil,
         reduce: ((State, Mutation) -> State)? = nil,
         shouldCancel: (((state: State, action: Action), (state: State, action: Action)) -> Bool)? = nil
@@ -92,7 +92,7 @@ open class ProxyReduce<R: Reduce>: Reduce {
                 reduce.mutator = mutator
             },
             start: { mutator in
-                reduce.start(with: mutator)
+                try await reduce.start(with: mutator)
             },
             mutate: { state, action, _ in
                 try await reduce.mutate(state: state, action: action)
@@ -107,11 +107,11 @@ open class ProxyReduce<R: Reduce>: Reduce {
     }
     
     // MARK: - Lifecycle
-    open func start(with mutator: any Mutator<Mutation, State>) {
+    open func start(with mutator: any Mutator<Mutation, State>) async throws {
         self.mutator = mutator
         
         weak var weakMutator = mutator
-        _start?(weakMutator!)
+        try await _start?(weakMutator!)
     }
     
     open func mutate(state: State, action: Action) async throws {

@@ -110,6 +110,22 @@ final class ReducerTests: XCTestCase {
         XCTAssertGreaterThan(result.last ?? 0, 0)
     }
     
+    func test_that_count_increases_when_await_mutate_in_start() async throws {
+        // Given
+        let reducer = Reducer(AwaitStartReduce(
+            initialState: .init(count: 0)
+        ))
+        
+        // When
+        let result = try await wait(
+            reducer.$state.map(\.count),
+            timeout: 1
+        )
+        
+        // Then
+        XCTAssertEqual(result, [0, 1])
+    }
+    
     func test_that_reducer_should_be_able_to_assign_proxy_reduce() async throws {
         // Given
         var reducer = Reducer(CountIncreaseReduce(
