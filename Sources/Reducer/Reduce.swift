@@ -27,6 +27,8 @@ public protocol Reduce: AnyObject {
 }
 
 public extension Reduce {
+    var currentState: State { mutator?.state ?? initialState }
+    
     func start(with mutator: any Mutator<Mutation, State>) async throws {
 
     }
