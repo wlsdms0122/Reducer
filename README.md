@@ -108,7 +108,7 @@ class CounterViewController: UIViewController {
     @IBOutlet var countLabel: UILabel!
 
     private let reducer = Reducer(CounterReduce())
-    private let cancellableBag = Set<AnyCancellable>
+    private var cancellableBag: Set<AnyCancellable> = []
     
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -118,7 +118,8 @@ class CounterViewController: UIViewController {
     private func bind() {
         reducer.$state.map(\.count)
             .removeDuplicates()
-            .sink { [weak self] in self?.countLabel.text = $0 }
+            .map(String.init)
+            .assign(to: \.text, on: countLabel)
             .store(in: &cancellableBag)
     }
 

@@ -14,12 +14,11 @@ public protocol Reduce: AnyObject {
     associatedtype State
     
     typealias ActionItem = (state: State, action: Action)
-    typealias Mutate = (Mutation) -> Void
     
-    var mutator: (any Mutator<Mutation, State>)? { get set }
+    var mutator: Mutator<Mutation, State>? { get set }
     var initialState: State { get }
     
-    func start(with mutator: any Mutator<Mutation, State>) async throws
+    func start(with mutator: Mutator<Mutation, State>) async throws
     
     func mutate(state: State, action: Action) async throws
     func reduce(state: State, mutation: Mutation) -> State
@@ -29,7 +28,7 @@ public protocol Reduce: AnyObject {
 public extension Reduce {
     var currentState: State { mutator?.state ?? initialState }
     
-    func start(with mutator: any Mutator<Mutation, State>) async throws {
+    func start(with mutator: Mutator<Mutation, State>) async throws {
 
     }
     
@@ -54,32 +53,36 @@ open class ProxyReduce<R: Reduce>: Reduce {
     public typealias State = R.State
     
     // MARK: - Property
-    public var mutator: (any Mutator<Mutation, State>)? {
-        didSet {
-            _setMutator?(mutator)
-        }
-    }
+    /// Mutator in reducer of reduce.
+    ///
+    /// Before version 1.3.0 of `Reducer`, a crash may occur on iOS 15 when using constrained existential type.
+    /// The exact situation is that a closure with constrained existential type is defined as a parameter with the `async` keyword and built with package.
+    
+    /// The error message is as follows:
+    /// ```
+    /// dyld[56497]: Symbol not found: (_swift_getExtendedExistentialTypeMetadata)
+    ///   Referenced from: '/private/var/containers/Bundle/Application/8919658D-110E-4089-8C34-40AF606B7B8D/crashTest.app/crashTest'
+    ///   Expected in: '/usr/lib/swift/libswiftCore.dylib'
+    /// ```
+    ///
+    /// To fix this, replace the constrainted existential type with a generic class.
+    public var mutator: Mutator<Mutation, State>?
     public var initialState: State
     
-    private let _setMutator: (((any Mutator<Mutation, State>)?) -> Void)?
-    
-    private let _start: ((any Mutator<Mutation, State>) async throws -> Void)?
-    private let _mutate: ((State, Action, @escaping Mutate) async throws -> Void)?
+    private let _start: ((Mutator<Mutation, State>) async throws -> Void)?
+    private let _mutate: ((State, Action, Mutator<Mutation, State>) async throws -> Void)?
     private let _reduce: ((State, Mutation) -> State)?
     private let _shouldCancel: ((ActionItem, ActionItem) -> Bool)?
     
     // MARK: - Initalizer
     public init(
         initialState: State,
-        setMutator: (((any Mutator<Mutation, State>)?) -> Void)? = nil,
-        start: ((any Mutator<Mutation, State>) async throws -> Void)? = nil,
-        mutate: ((State, Action, @escaping Mutate) async throws -> Void)? = nil,
+        start: ((Mutator<Mutation, State>) async throws -> Void)? = nil,
+        mutate: ((State, Action, Mutator<Mutation, State>) async throws -> Void)? = nil,
         reduce: ((State, Mutation) -> State)? = nil,
         shouldCancel: (((state: State, action: Action), (state: State, action: Action)) -> Bool)? = nil
     ) {
         self.initialState = initialState
-        
-        self._setMutator = setMutator
         
         self._start = start
         self._mutate = mutate
@@ -90,10 +93,8 @@ open class ProxyReduce<R: Reduce>: Reduce {
     convenience init(_ reduce: R) {
         self.init(
             initialState: reduce.initialState,
-            setMutator: { mutator in
-                reduce.mutator = mutator
-            },
             start: { mutator in
+                reduce.mutator = mutator
                 try await reduce.start(with: mutator)
             },
             mutate: { state, action, _ in
@@ -109,20 +110,14 @@ open class ProxyReduce<R: Reduce>: Reduce {
     }
     
     // MARK: - Lifecycle
-    open func start(with mutator: any Mutator<Mutation, State>) async throws {
+    open func start(with mutator: Mutator<Mutation, State>) async throws {
         self.mutator = mutator
-        
-        weak var weakMutator = mutator
-        try await _start?(weakMutator!)
+        try await _start?(mutator)
     }
     
     open func mutate(state: State, action: Action) async throws {
-        try await _mutate?(
-            state,
-            action
-        ) { [weak self] in
-            self?.mutate($0)
-        }
+        guard let mutator else { return }
+        try await _mutate?(state, action, mutator)
     }
     
     open func reduce(state: State, mutation: Mutation) -> State {
