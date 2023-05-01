@@ -22,7 +22,7 @@ class AwaitStartReduce: Reduce {
     }
 
     // MARK: - Property
-    var mutator: (any Mutator<Mutation, State>)?
+    var mutator: Mutator<Mutation, State>?
     var initialState: State
 
     // MARK: - Initializer
@@ -31,7 +31,7 @@ class AwaitStartReduce: Reduce {
     }
 
     // MARK: - Lifecycle
-    func start(with mutator: any Mutator<Mutation, State>) async throws {
+    func start(with mutator: Mutator<Mutation, State>) async throws {
         try await Task.sleep(nanoseconds: 10_000_000)
         mutator.mutate(.increase)
     }

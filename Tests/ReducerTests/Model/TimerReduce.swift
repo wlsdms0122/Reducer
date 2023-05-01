@@ -22,7 +22,7 @@ class TimerReduce: Reduce {
     }
 
     // MARK: - Property
-    var mutator: (any Mutator<Mutation, State>)?
+    var mutator: Mutator<Mutation, State>?
     var initialState: State
 
     // MARK: - Initializer
@@ -31,7 +31,7 @@ class TimerReduce: Reduce {
     }
 
     // MARK: - Lifecycle
-    func start(with mutator: any Mutator<Mutation, State>) async throws {
+    func start(with mutator: Mutator<Mutation, State>) async throws {
         Timer.publish(every: 0.1, on: .main, in: .default)
             .autoconnect()
             .sink { _ in mutator(.increase) }

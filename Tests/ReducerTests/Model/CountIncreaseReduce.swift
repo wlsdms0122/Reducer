@@ -21,7 +21,7 @@ class CountIncreaseReduce: Reduce {
     }
 
     // MARK: - Property
-    var mutator: (any Mutator<Mutation, State>)?
+    var mutator: Mutator<Mutation, State>?
     var initialState: State
 
     // MARK: - Initializer

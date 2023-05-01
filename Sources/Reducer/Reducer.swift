@@ -67,7 +67,7 @@ final class TaskBag<Item> {
     }
 }
 
-open class Reducer<R: Reduce>: ObservableObject, Mutator {
+open class Reducer<R: Reduce>: ObservableObject, Mutable {
     public typealias Action = R.Action
     public typealias Mutation = R.Mutation
     public typealias State = R.State
@@ -91,7 +91,7 @@ open class Reducer<R: Reduce>: ObservableObject, Mutator {
         
         // Start reduce with mutator.
         Task {
-            try await self.reduce.start(with: ProxyMutator(self))
+            try await self.reduce.start(with: Mutator(self))
         }
     }
     
