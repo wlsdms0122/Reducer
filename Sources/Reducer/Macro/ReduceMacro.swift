@@ -6,5 +6,5 @@
 //
 
 @attached(member, names: named(mutator))
-@attached(conformance)
+@attached(extension)
 public macro Reduce() = #externalMacro(module: "Macro", type: "ReduceMacro")
