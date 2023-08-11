@@ -18,8 +18,8 @@ public struct ReduceMacro: ExtensionMacro, MemberMacro {
         in context: some SwiftSyntaxMacros.MacroExpansionContext
     ) throws -> [SwiftSyntax.ExtensionDeclSyntax] {
         let extenstion: DeclSyntax = """
-         extension \(type.trimmed): Equatable { }
-         """
+        extension \(type.trimmed): Reduce { }
+        """
         
         return [extenstion.cast(ExtensionDeclSyntax.self)]
     }
