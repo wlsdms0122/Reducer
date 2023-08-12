@@ -24,7 +24,7 @@
 ## Swift Package Manager
 ```swift
 dependencies: [
-    .package(url: "https://github.com/wlsdms0122/Reducer.git", exact: "1.1.0")
+    .package(url: "https://github.com/wlsdms0122/Reducer.git", exact: "1.4.0")
 ]
 ```
 
@@ -51,7 +51,7 @@ final class CounterReduce: Reduce {
         var count: Int
     }
 
-    var mutator: (any Mutator<Mutation, State>)?
+    var mutator: Mutator<Mutation, State>?
     var initialState: State
 
     init(initialState: State) {
@@ -135,10 +135,17 @@ You can cancel running action task using `shouldCancel(_:_:) -> Bool`.
 
 For example, if you want to cancel validating user input for each keystroke to efficiently use resources, `Reducer` can determine whether the current running task should be canceled before creating a new task action. If `shouldCancel(_:_:)` returns `true`, the current action should be canceled.
 
+⚠️ The first thing to note about canceling a task is that the general expectation is that the comparison of actions should return `false` except for the case you want to cancel.
+
+The second thing to note that canceling a Task doesn't stop your code from progressing. In swift concurrency, [cancel](https://developer.apple.com/documentation/swift/task/cancel()) of task doesn't has no effect basically.
+
+If you want to make canceling a task meaningful, you'll need to [create a cancelable async method](https://developer.apple.com/documentation/swift/withtaskcancellationhandler(operation:oncancel:)) or utilize something like [`Task.checkCancellation()`](https://developer.apple.com/documentation/swift/task/checkcancellation()).
+
 ```swift
 final class SignUpReduce: Reduce {
     enum Action {
         case emailChanged(String)
+        case anyAction
     }
 
     enum Mutation {
@@ -149,7 +156,7 @@ final class SignUpReduce: Reduce {
         var canSignUp: Bool
     }
 
-    var mutator: (any Mutator<Mutation, State>)?
+    var mutator: Mutator<Mutation, State>?
     var initialState: State
 
     private let validator = EmailValidator()
@@ -162,14 +169,24 @@ final class SignUpReduce: Reduce {
         switch action {
         case let .emailChanged(email):
             let result = try await validator.validate(email)
+            try Task.checkCancellation()
+            
             mutate(.canSignUp(result))
+
+        case .anyAction:
+            ...
         }
     }
+
+    ...
 
     func shouldCancel(_ current: ActionItem, _ upcoming: ActionItem) -> Bool {
         switch (current.action, upcoming.action) {
         case (.emailChanged, .emailChanged):
             return true
+
+        default:
+            return false
         }
     }
 }
@@ -202,7 +219,7 @@ final class ListReduce: Reduce {
     func start(with mutator: any Mutator<Mutation, State>) async throws {
         NotificationCenter.default.publisher(for: .init("data_changed"))
             .sink { data in 
-                /* Write any mutates here. */
+                // Write any mutates here.
                 mutator(.setList($0.object))
             }
             // You can mutator scope cancellable bag.
