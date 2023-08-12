@@ -24,7 +24,7 @@ let package = Package(
     ],
     targets: [
         .macro(
-            name: "Macro",
+            name: "ReducerMacro",
             dependencies: [
                 .product(name: "SwiftSyntaxMacros", package: "swift-syntax"),
                 .product(name: "SwiftCompilerPlugin", package: "swift-syntax")
@@ -33,7 +33,7 @@ let package = Package(
         .target(
             name: "Reducer",
             dependencies: [
-                "Macro"
+                "ReducerMacro"
             ]
         ),
         .testTarget(
@@ -45,7 +45,7 @@ let package = Package(
         .testTarget(
             name: "MacroTests",
             dependencies: [
-                "Macro",
+                "ReducerMacro",
                 .product(name: "SwiftSyntaxMacrosTestSupport", package: "swift-syntax"),
             ]
         )

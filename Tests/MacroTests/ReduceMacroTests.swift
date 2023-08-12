@@ -8,7 +8,7 @@
 import SwiftSyntaxMacros
 import SwiftSyntaxMacrosTestSupport
 import XCTest
-import Macro
+import ReducerMacro
 
 let testMacros: [String: Macro.Type] = [
     "Reduce": ReduceMacro.self,
@@ -37,10 +37,13 @@ final class ReduceMacroTests: XCTestCase {
             }
             """,
             expandedSource: """
-            
             class Test {
+
                 var mutator: Mutator<Mutation, State>?
-            
+
+            }
+
+            extension Test: Reduce {
             }
             """,
             macros: testMacros

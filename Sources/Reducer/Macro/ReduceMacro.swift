@@ -7,4 +7,4 @@
 
 @attached(member, names: named(mutator))
 @attached(extension, conformances: Reduce)
-public macro Reduce() = #externalMacro(module: "Macro", type: "ReduceMacro")
+public macro Reduce() = #externalMacro(module: "ReducerMacro", type: "ReduceMacro")

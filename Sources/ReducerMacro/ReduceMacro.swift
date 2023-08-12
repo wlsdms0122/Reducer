@@ -9,7 +9,9 @@ import SwiftSyntax
 import SwiftSyntaxBuilder
 import SwiftSyntaxMacros
 
-public struct ReduceMacro: ExtensionMacro, MemberMacro {
+public struct ReduceMacro { }
+
+extension ReduceMacro: ExtensionMacro {
     public static func expansion(
         of node: SwiftSyntax.AttributeSyntax,
         attachedTo declaration: some SwiftSyntax.DeclGroupSyntax,
@@ -17,13 +19,15 @@ public struct ReduceMacro: ExtensionMacro, MemberMacro {
         conformingTo protocols: [SwiftSyntax.TypeSyntax],
         in context: some SwiftSyntaxMacros.MacroExpansionContext
     ) throws -> [SwiftSyntax.ExtensionDeclSyntax] {
-        let extenstion: DeclSyntax = """
+        let extenstion = DeclSyntax("""
         extension \(type.trimmed): Reduce { }
-        """
+        """)
         
         return [extenstion.cast(ExtensionDeclSyntax.self)]
     }
-    
+}
+
+extension ReduceMacro: MemberMacro {
     public static func expansion<
         Declaration: DeclGroupSyntax,
         Context: MacroExpansionContext
@@ -36,8 +40,6 @@ public struct ReduceMacro: ExtensionMacro, MemberMacro {
         var mutator: Mutator<Mutation, State>?
         """)
         
-        return [
-            mutatorSyntax
-        ]
+        return [mutatorSyntax]
     }
 }
