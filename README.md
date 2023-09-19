@@ -35,7 +35,8 @@ dependencies: [
 To get started, you'll need to define a class that adopts the `Reduce` protocol.
 
 ```swift
-final class CounterReduce: Reduce {
+@Reduce
+final class CounterReduce {
     // User interaction input.
     enum Action {
         case increase
@@ -51,11 +52,10 @@ final class CounterReduce: Reduce {
         var count: Int
     }
 
-    var mutator: (any Mutator<Mutation, State>)?
-    var initialState: State
+    let initialState: State
 
-    init(initialState: State) {
-        self.initialState = initialState
+    init() {
+        self.initialState = State()
     }
     
     func mutate(state: State, action: Action) async throws {
@@ -136,7 +136,8 @@ You can cancel running action task using `shouldCancel(_:_:) -> Bool`.
 For example, if you want to cancel validating user input for each keystroke to efficiently use resources, `Reducer` can determine whether the current running task should be canceled before creating a new task action. If `shouldCancel(_:_:)` returns `true`, the current action should be canceled.
 
 ```swift
-final class SignUpReduce: Reduce {
+@Reduce
+final class SignUpReduce {
     enum Action {
         case emailChanged(String)
     }
@@ -149,8 +150,7 @@ final class SignUpReduce: Reduce {
         var canSignUp: Bool
     }
 
-    var mutator: (any Mutator<Mutation, State>)?
-    var initialState: State
+    let initialState: State
 
     private let validator = EmailValidator()
 
@@ -181,7 +181,8 @@ The reducer sometimes needs to mutate state without explicit outside action like
 In these case, you can use `start(with:)` function. It call once when `Reducer` set `Reduce`. So you can any initialize process with mutations.
 
 ```swift
-final class ListReduce: Reduce {
+@Reduce
+final class ListReduce {
     enum Action { ... }
 
     enum Mutation {
@@ -194,8 +195,7 @@ final class ListReduce: Reduce {
         ...
     }
 
-    var mutator: (any Mutator<Mutation, State>)?
-    var initialState: State
+    let initialState: State
     
     init() { ... }
 
