@@ -51,8 +51,8 @@ final class CounterReduce: Reduce {
         var count: Int
     }
 
-    var mutator: (any Mutator<Mutation, State>)?
-    var initialState: State
+    var mutator: Mutator<Mutation, State>?
+    let initialState: State
 
     init(initialState: State) {
         self.initialState = initialState
@@ -138,7 +138,7 @@ For example, if you want to cancel validating user input for each keystroke to e
 ```swift
 final class SignUpReduce: Reduce {
     enum Action {
-        case emailChanged(String)
+        case updateEmail(String)
     }
 
     enum Mutation {
@@ -150,7 +150,7 @@ final class SignUpReduce: Reduce {
     }
 
     var mutator: (any Mutator<Mutation, State>)?
-    var initialState: State
+    let initialState: State
 
     private let validator = EmailValidator()
 
@@ -160,7 +160,7 @@ final class SignUpReduce: Reduce {
 
     func mutate(state: State, action: Action) async throws {
         switch action {
-        case let .emailChanged(email):
+        case let .updateEmail(email):
             let result = try await validator.validate(email)
             mutate(.canSignUp(result))
         }
@@ -195,14 +195,14 @@ final class ListReduce: Reduce {
     }
 
     var mutator: (any Mutator<Mutation, State>)?
-    var initialState: State
+    let initialState: State
     
     init() { ... }
 
     func start(with mutator: any Mutator<Mutation, State>) async throws {
         NotificationCenter.default.publisher(for: .init("data_changed"))
             .sink { data in 
-                /* Write any mutates here. */
+                // Write any mutates here.
                 mutator(.setList($0.object))
             }
             // You can mutator scope cancellable bag.
