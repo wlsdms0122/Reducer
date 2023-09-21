@@ -52,7 +52,7 @@ final class CounterReduce: Reduce {
     }
 
     var mutator: Mutator<Mutation, State>?
-    var initialState: State
+    let initialState: State
 
     init(initialState: State) {
         self.initialState = initialState
@@ -144,7 +144,7 @@ If you want to make canceling a task meaningful, you'll need to [create a cancel
 ```swift
 final class SignUpReduce: Reduce {
     enum Action {
-        case emailChanged(String)
+        case updateEmail(String)
         case anyAction
     }
 
@@ -157,7 +157,7 @@ final class SignUpReduce: Reduce {
     }
 
     var mutator: Mutator<Mutation, State>?
-    var initialState: State
+    let initialState: State
 
     private let validator = EmailValidator()
 
@@ -167,7 +167,7 @@ final class SignUpReduce: Reduce {
 
     func mutate(state: State, action: Action) async throws {
         switch action {
-        case let .emailChanged(email):
+        case let .updateEmail(email):
             let result = try await validator.validate(email)
             try Task.checkCancellation()
             
@@ -212,7 +212,7 @@ final class ListReduce: Reduce {
     }
 
     var mutator: (any Mutator<Mutation, State>)?
-    var initialState: State
+    let initialState: State
     
     init() { ... }
 
