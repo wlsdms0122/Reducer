@@ -24,7 +24,7 @@
 ## Swift Package Manager
 ```swift
 dependencies: [
-    .package(url: "https://github.com/wlsdms0122/Reducer.git", exact: "1.1.0")
+    .package(url: "https://github.com/wlsdms0122/Reducer.git", exact: "1.4.0")
 ]
 ```
 
@@ -135,10 +135,17 @@ You can cancel running action task using `shouldCancel(_:_:) -> Bool`.
 
 For example, if you want to cancel validating user input for each keystroke to efficiently use resources, `Reducer` can determine whether the current running task should be canceled before creating a new task action. If `shouldCancel(_:_:)` returns `true`, the current action should be canceled.
 
+⚠️ The first thing to note about canceling a task is that the general expectation is that the comparison of actions should return `false` except for the case you want to cancel.
+
+The second thing to note that canceling a Task doesn't stop your code from progressing. In swift concurrency, [cancel](https://developer.apple.com/documentation/swift/task/cancel()) of task doesn't has no effect basically.
+
+If you want to make canceling a task meaningful, you'll need to [create a cancelable async method](https://developer.apple.com/documentation/swift/withtaskcancellationhandler(operation:oncancel:)) or utilize something like [`Task.checkCancellation()`](https://developer.apple.com/documentation/swift/task/checkcancellation()).
+
 ```swift
 final class SignUpReduce: Reduce {
     enum Action {
         case updateEmail(String)
+        case anyAction
     }
 
     enum Mutation {
@@ -149,7 +156,7 @@ final class SignUpReduce: Reduce {
         var canSignUp: Bool
     }
 
-    var mutator: (any Mutator<Mutation, State>)?
+    var mutator: Mutator<Mutation, State>?
     let initialState: State
 
     private let validator = EmailValidator()
@@ -162,14 +169,24 @@ final class SignUpReduce: Reduce {
         switch action {
         case let .updateEmail(email):
             let result = try await validator.validate(email)
+            try Task.checkCancellation()
+            
             mutate(.canSignUp(result))
+
+        case .anyAction:
+            ...
         }
     }
+
+    ...
 
     func shouldCancel(_ current: ActionItem, _ upcoming: ActionItem) -> Bool {
         switch (current.action, upcoming.action) {
         case (.emailChanged, .emailChanged):
             return true
+
+        default:
+            return false
         }
     }
 }
