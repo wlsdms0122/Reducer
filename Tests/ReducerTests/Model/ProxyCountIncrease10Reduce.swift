@@ -8,7 +8,7 @@
 import Reducer
 
 class ProxyCountIncrease10Reduce: ProxyReduce<CountIncreaseReduce> {
-    override func mutate(state: State, action: Action) async throws {
+    override func mutate(action: Action) async throws {
         switch action {
         case .increase:
             try await Task.sleep(nanoseconds: 100_000_000)

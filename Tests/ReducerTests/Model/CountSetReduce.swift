@@ -7,7 +7,9 @@
 
 import Reducer
 
-class CountSetReduce: Reduce {
+@Reduce
+@MainActor
+class CountSetReduce {
     enum Action {
         case increase
     }
@@ -21,8 +23,7 @@ class CountSetReduce: Reduce {
     }
 
     // MARK: - Property
-    var mutator: Mutator<Mutation, State>?
-    var initialState: State
+    let initialState: State
 
     // MARK: - Initializer
     init(initialState: State) {
@@ -30,12 +31,12 @@ class CountSetReduce: Reduce {
     }
 
     // MARK: - Lifecycle
-    func mutate(state: State, action: Action) async throws {
+    func mutate(action: Action) async throws {
         switch action {
         case .increase:
             // Increase count after waiting 0.1 sec.
             try await Task.sleep(nanoseconds: 10_000_000)
-            mutate(.setCount(state.count + 1))
+            mutate(.setCount(currentState.count + 1))
         }
     }
 
@@ -49,8 +50,8 @@ class CountSetReduce: Reduce {
         }
     }
 
-    func shouldCancel(_ current: ActionItem, _ upcoming: ActionItem) -> Bool {
+    func shouldCancel(_ current: Action, _ upcoming: Action) -> Bool {
         // Cancel previous action when same action occured.
-        current.action == upcoming.action
+        current == upcoming
     }
 }
