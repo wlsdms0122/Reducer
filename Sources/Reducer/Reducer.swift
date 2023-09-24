@@ -8,7 +8,6 @@
 import Foundation
 import Combine
 
-@MainActor
 final class TaskBag<Item> {
     struct TaskItem: Hashable {
         // MARK: - Property
@@ -81,9 +80,9 @@ open class Reducer<R: Reduce>: ObservableObject, Mutable {
         self.state = reduce.initialState
         self.reduce = reduce
         
-        // Start reduce with mutator.
         reduce.mutator = Mutator(self, initialState: reduce.initialState)
         Task {
+            // Start reduce with mutator.
             try? await reduce.start()
         }
     }
@@ -95,7 +94,6 @@ open class Reducer<R: Reduce>: ObservableObject, Mutable {
     // MARK: - Lifecycle
     open func mutate(_ mutation: Mutation) {
         // Reduce state from mutation.
-        // Run task on main actor context.
         state = reduce(state: state, mutation: mutation)
     }
     
@@ -103,6 +101,7 @@ open class Reducer<R: Reduce>: ObservableObject, Mutable {
     open func action(_ action: Action) {
         let reduce = reduce
         
+        // Traversing the task and deciding to cancel it.
         taskBag.forEach { task in
             guard reduce.shouldCancel(task.item, action) else { return }
             task.cancel()
@@ -111,7 +110,7 @@ open class Reducer<R: Reduce>: ObservableObject, Mutable {
         // Store task into bag.
         taskBag.store(.init(
             action,
-            with: Task {
+            with: Task { @MainActor in
                 // Mutate state from action.
                 try? await reduce.mutate(action: action)
             }

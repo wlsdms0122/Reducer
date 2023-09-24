@@ -114,6 +114,7 @@ open class ProxyReduce<R: Reduce>: Reduce {
             }
         )
         
+        // Set flag to false to indicate mutator pointer deallocated.
         _mutator.deallocate()
         isMutatorAllocated = false
         
@@ -143,6 +144,7 @@ open class ProxyReduce<R: Reduce>: Reduce {
     
     deinit {
         if isMutatorAllocated {
+            // Deallocate pointer when mutator allocated.
             _mutator.deallocate()
         }
     }
