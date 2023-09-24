@@ -32,10 +32,15 @@ dependencies: [
 > This guide dose not cover the detailed principles of state design.
 > For more information, plrease refer to the [ReactorKit](https://github.com/ReactorKit/ReactorKit) or [TCA](https://github.com/pointfreeco/swift-composable-architecture) README.
 
-To get started, you'll need to define a class that adopts the `Reduce` protocol.
+To get started, You can define it via the `@Reduce` macro. or you can adopt the `Reduce` protocol.
+
+By default, `Reducer` runs on the UI's main thread, while `Reduce` does not. It's fine to use `Reduce` without the `@MainActor` constraint, but if you want the actions to run sequentially, add the `@MainActor` annotation.
+
+> ⚠️ When implementing `Reduce`, there is a slight difference in the use of macro and protocol.
 
 ```swift
 @Reduce
+@MainActor
 final class CounterReduce {
     // User interaction input.
     enum Action {
@@ -44,7 +49,7 @@ final class CounterReduce {
     
     // Unit of state mutation.
     enum Mutation {
-        case addOne
+        case setCount(Int)
     }
 
     // Reducer state.
@@ -58,10 +63,10 @@ final class CounterReduce {
         self.initialState = State()
     }
     
-    func mutate(state: State, action: Action) async throws {
+    func mutate(action: Action) async throws {
         switch action {
         case .increase:
-            mutate(.addOne)
+            mutate(.setCount(currentState.count + 1))
         }
     }
 
@@ -69,15 +74,15 @@ final class CounterReduce {
         var state = state
 
         switch mutation {
-        case .addOne:
-            state.count += 1
+        case let .setCount(count):
+            state.count = count
             return state
         }
     }
 }
 ```
 
-The `mutate(state:action) async throws` method defines what to mutate when an action received with the current state. You can call `mutate(_:)`(an extended function) to mutate. and `Swift Concurrency` can be used within the mutate method as well.
+The `mutate(action:) async throws` method defines what to mutate when an action received with the current state. You can call `mutate(_:)`(an extended function) to mutate. and `Swift Concurrency` can be used within the mutate method as well.
 
 `reduce(state:mutation)` describe how to mutate the state from a mutation. It should be a pure function.
 
@@ -143,6 +148,7 @@ If you want to make canceling a task meaningful, you'll need to [create a cancel
 
 ```swift
 @Reduce
+@MainActor
 final class SignUpReduce {
     enum Action {
         case updateEmail(String)
@@ -165,7 +171,7 @@ final class SignUpReduce {
         initialState = State(canSignUp: false)
     }
 
-    func mutate(state: State, action: Action) async throws {
+    func mutate(action: Action) async throws {
         switch action {
         case let .updateEmail(email):
             let result = try await validator.validate(email)
@@ -180,8 +186,8 @@ final class SignUpReduce {
 
     ...
 
-    func shouldCancel(_ current: ActionItem, _ upcoming: ActionItem) -> Bool {
-        switch (current.action, upcoming.action) {
+    func shouldCancel(_ current: Action, _ upcoming: Action) -> Bool {
+        switch (current, upcoming) {
         case (.emailChanged, .emailChanged):
             return true
 
@@ -195,10 +201,11 @@ final class SignUpReduce {
 ### Internal Mutating
 The reducer sometimes needs to mutate state without explicit outside action like some domain data changed.
 
-In these case, you can use `start(with:)` function. It call once when `Reducer` set `Reduce`. So you can any initialize process with mutations.
+In these case, you can use `start()` function. It call once when `Reducer` set `Reduce`. So you can any initialize process with mutations.
 
 ```swift
 @Reduce
+@MainActor
 final class ListReduce {
     enum Action { ... }
 
@@ -213,18 +220,20 @@ final class ListReduce {
     }
 
     let initialState: State
+    private var cancellableBag = Set<AnyCancellable>()
     
     init() { ... }
 
-    func start(with mutator: any Mutator<Mutation, State>) async throws {
+    func start() async throws {
+        // Reset subscription when reduce re-start by reducer.
+        cancellableBag.removeAll()
+        
         NotificationCenter.default.publisher(for: .init("data_changed"))
-            .sink { data in 
+            .sink { [weak self] data in 
                 // Write any mutates here.
-                mutator(.setList($0.object))
+                self?.mutate(.setList(data.object))
             }
-            // You can mutator scope cancellable bag.
-            // It all cancel when mutator(reducer) deinit.
-            .store(in: mutator.cancellableBag)
+            .store(in: &cancellableBag)
     }
 }
 ```
@@ -260,15 +269,10 @@ It maipulate all of `Reduce` even the `initialState`.
 ```swift
 CounterView(reducer: .init(proxy: .init(
     initialState: .init(count: 100),
-    mutate: { state, action, mutate in
-        
-    },
-    reduce: { state, mutation in
-        // Return the state of result of mutating.
-    },
-    shouldCancel: { current, upcoming in
-        // Return wether the current action should be canceled via the upcoming action.
-    }
+    start: { mutate in ... }
+    mutate: { state, action, mutate in ... },
+    reduce: { state, mutation in ... },
+    shouldCancel: { current, upcoming in ... }
 )))
 ```
 
