@@ -7,8 +7,11 @@
 
 import Foundation
 import Reducer
+import Combine
 
-class TimerReduce: Reduce {
+@Reduce
+@MainActor
+class TimerReduce {
     enum Action {
         case empty
     }
@@ -22,8 +25,9 @@ class TimerReduce: Reduce {
     }
 
     // MARK: - Property
-    var mutator: Mutator<Mutation, State>?
-    var initialState: State
+    let initialState: State
+    
+    private var cancellableBag = Set<AnyCancellable>()
 
     // MARK: - Initializer
     init(initialState: State) {
@@ -31,14 +35,16 @@ class TimerReduce: Reduce {
     }
 
     // MARK: - Lifecycle
-    func start(with mutator: Mutator<Mutation, State>) async throws {
+    func start() async throws {
+        cancellableBag.removeAll()
+        
         Timer.publish(every: 0.1, on: .main, in: .default)
             .autoconnect()
-            .sink { _ in mutator(.increase) }
-            .store(in: &mutator.cancellableBag)
+            .sink { [weak self] _ in self?.mutate(.increase) }
+            .store(in: &cancellableBag)
     }
     
-    func mutate(state: State, action: Action) async throws {
+    func mutate(action: Action) async throws {
         
     }
 

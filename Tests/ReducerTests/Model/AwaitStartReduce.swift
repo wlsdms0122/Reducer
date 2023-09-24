@@ -8,7 +8,9 @@
 import Foundation
 import Reducer
 
-class AwaitStartReduce: Reduce {
+@Reduce
+@MainActor
+class AwaitStartReduce {
     enum Action {
         case empty
     }
@@ -22,8 +24,7 @@ class AwaitStartReduce: Reduce {
     }
 
     // MARK: - Property
-    var mutator: Mutator<Mutation, State>?
-    var initialState: State
+    let initialState: State
 
     // MARK: - Initializer
     init(initialState: State) {
@@ -31,12 +32,12 @@ class AwaitStartReduce: Reduce {
     }
 
     // MARK: - Lifecycle
-    func start(with mutator: Mutator<Mutation, State>) async throws {
+    func start() async throws {
         try await Task.sleep(nanoseconds: 10_000_000)
-        mutator.mutate(.increase)
+        mutate(.increase)
     }
     
-    func mutate(state: State, action: Action) async throws {
+    func mutate(action: Action) async throws {
         
     }
 

@@ -7,7 +7,9 @@
 
 import Reducer
 
-class CountIncreaseReduce: Reduce {
+@Reduce
+@MainActor
+class CountIncreaseReduce {
     enum Action {
         case increase
     }
@@ -21,8 +23,7 @@ class CountIncreaseReduce: Reduce {
     }
 
     // MARK: - Property
-    var mutator: Mutator<Mutation, State>?
-    var initialState: State
+    let initialState: State
 
     // MARK: - Initializer
     init(initialState: State) {
@@ -30,7 +31,7 @@ class CountIncreaseReduce: Reduce {
     }
 
     // MARK: - Lifecycle
-    func mutate(state: State, action: Action) async throws {
+    func mutate(action: Action) async throws {
         switch action {
         case .increase:
             // Increase count after waiting 0.1 sec.

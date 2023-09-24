@@ -8,15 +8,14 @@
 import Foundation
 import Combine
 
-@MainActor
 final class TaskBag<Item> {
     struct TaskItem: Hashable {
         // MARK: - Property
         let item: Item
-        let task: Task<Void?, Never>
+        let task: Task<Void, Never>
         
         // MARK: - Initalizer
-        init(_ item: Item, with task: Task<Void?, Never>) {
+        init(_ item: Item, with task: Task<Void, Never>) {
             self.item = item
             self.task = task
         }
@@ -46,18 +45,14 @@ final class TaskBag<Item> {
     func store(_ item: TaskItem) {
         items.insert(item)
         
-        Task { [weak self] in
+        Task {
             await item.task.value
-            self?.remove(item)
+            items.remove(item)
         }
     }
     
     func forEach(_ body: (TaskItem) throws -> Void) rethrows {
         try items.forEach(body)
-    }
-    
-    func remove(_ item: TaskItem) {
-        items.remove(item)
     }
     
     // MARK: - Private
@@ -75,23 +70,20 @@ open class Reducer<R: Reduce>: ObservableObject, Mutable {
     // MARK: - Property
     @Published
     public private(set) var state: State
-    public let initialState: State
     
     private let reduce: ProxyReduce<R>
     
-    public var cancellableBag = Set<AnyCancellable>()
-    private let taskBag = TaskBag<R.ActionItem>()
+    private let taskBag = TaskBag<R.Action>()
     
     // MARK: - Initalizer
     public init(proxy reduce: ProxyReduce<R>) {
+        self.state = reduce.initialState
         self.reduce = reduce
         
-        self.state = reduce.initialState
-        self.initialState = reduce.initialState
-        
-        // Start reduce with mutator.
+        reduce.mutator = Mutator(self, initialState: reduce.initialState)
         Task {
-            try await self.reduce.start(with: Mutator(self))
+            // Start reduce with mutator.
+            try? await reduce.start()
         }
     }
     
@@ -100,39 +92,28 @@ open class Reducer<R: Reduce>: ObservableObject, Mutable {
     }
     
     // MARK: - Lifecycle
-    public func mutate(_ mutation: Mutation) {
-        Task {
-            // Reduce state from mutation.
-            // Run task on main actor context.
-            reduce(mutation: mutation)
-        }
+    open func mutate(_ mutation: Mutation) {
+        // Reduce state from mutation.
+        state = reduce(state: state, mutation: mutation)
     }
     
     // MARK: - Public
-    public func action(_ action: Action) {
+    open func action(_ action: Action) {
         let reduce = reduce
-        let state = state
         
-        taskBag.forEach {
-            guard reduce.shouldCancel($0.item, (state, action)) else { return }
-            $0.cancel()
+        // Traversing the task and deciding to cancel it.
+        taskBag.forEach { task in
+            guard reduce.shouldCancel(task.item, action) else { return }
+            task.cancel()
         }
         
         // Store task into bag.
         taskBag.store(.init(
-            (state, action),
-            with: Task {
+            action,
+            with: Task { @MainActor in
                 // Mutate state from action.
-                try? await reduce.mutate(
-                    state: state,
-                    action: action
-                )
+                try? await reduce.mutate(action: action)
             }
         ))
-    }
-    
-    // MARK: - Private
-    private func reduce(mutation: Mutation) {
-        state = reduce(state: state, mutation: mutation)
     }
 }
