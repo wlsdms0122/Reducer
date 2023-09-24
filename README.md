@@ -35,7 +35,8 @@ dependencies: [
 To get started, you'll need to define a class that adopts the `Reduce` protocol.
 
 ```swift
-final class CounterReduce: Reduce {
+@Reduce
+final class CounterReduce {
     // User interaction input.
     enum Action {
         case increase
@@ -51,11 +52,10 @@ final class CounterReduce: Reduce {
         var count: Int
     }
 
-    var mutator: Mutator<Mutation, State>?
     let initialState: State
 
-    init(initialState: State) {
-        self.initialState = initialState
+    init() {
+        self.initialState = State()
     }
     
     func mutate(state: State, action: Action) async throws {
@@ -142,7 +142,8 @@ The second thing to note that canceling a Task doesn't stop your code from progr
 If you want to make canceling a task meaningful, you'll need to [create a cancelable async method](https://developer.apple.com/documentation/swift/withtaskcancellationhandler(operation:oncancel:)) or utilize something like [`Task.checkCancellation()`](https://developer.apple.com/documentation/swift/task/checkcancellation()).
 
 ```swift
-final class SignUpReduce: Reduce {
+@Reduce
+final class SignUpReduce {
     enum Action {
         case updateEmail(String)
         case anyAction
@@ -156,7 +157,6 @@ final class SignUpReduce: Reduce {
         var canSignUp: Bool
     }
 
-    var mutator: Mutator<Mutation, State>?
     let initialState: State
 
     private let validator = EmailValidator()
@@ -198,7 +198,8 @@ The reducer sometimes needs to mutate state without explicit outside action like
 In these case, you can use `start(with:)` function. It call once when `Reducer` set `Reduce`. So you can any initialize process with mutations.
 
 ```swift
-final class ListReduce: Reduce {
+@Reduce
+final class ListReduce {
     enum Action { ... }
 
     enum Mutation {
@@ -211,7 +212,6 @@ final class ListReduce: Reduce {
         ...
     }
 
-    var mutator: (any Mutator<Mutation, State>)?
     let initialState: State
     
     init() { ... }
