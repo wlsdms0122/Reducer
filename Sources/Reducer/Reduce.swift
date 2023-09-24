@@ -13,26 +13,23 @@ public protocol Reduce: AnyObject {
     associatedtype Mutation
     associatedtype State
     
-    typealias ActionItem = (state: State, action: Action)
-    
     var mutator: Mutator<Mutation, State>? { get set }
     var initialState: State { get }
     
-    func start(with mutator: Mutator<Mutation, State>) async throws
-    
-    func mutate(state: State, action: Action) async throws
+    func start() async throws
+
+    func mutate(action: Action) async throws
     func reduce(state: State, mutation: Mutation) -> State
-    func shouldCancel(_ current: ActionItem, _ upcoming: ActionItem) -> Bool
+    
+    func shouldCancel(_ current: Action, _ upcoming: Action) -> Bool
 }
 
 public extension Reduce {
     var currentState: State { mutator?.state ?? initialState }
     
-    func start(with mutator: Mutator<Mutation, State>) async throws {
-
-    }
+    func start() async throws { }
     
-    func shouldCancel(_ current: ActionItem, _ upcoming: ActionItem) -> Bool {
+    func shouldCancel(_ current: Action, _ upcoming: Action) -> Bool {
         false
     }
     
@@ -66,21 +63,31 @@ open class ProxyReduce<R: Reduce>: Reduce {
     /// ```
     ///
     /// To fix this, replace the constrainted existential type with a generic class.
-    public var mutator: Mutator<Mutation, State>?
+    private var _mutator: UnsafeMutablePointer<Mutator<Mutation, State>?> = .allocate(capacity: 1)
+    public var mutator: Mutator<Mutation, State>? {
+        get {
+            _mutator.pointee
+        }
+        set {
+            _mutator.pointee = newValue
+        }
+    }
+    private var isMutatorAllocated: Bool = true
+    
     public var initialState: State
     
-    private let _start: ((Mutator<Mutation, State>) async throws -> Void)?
-    private let _mutate: ((State, Action, Mutator<Mutation, State>) async throws -> Void)?
+    private let _start: ((@escaping (Mutation) -> Void) async throws -> Void)?
+    private let _mutate: ((State, Action, @escaping (Mutation) -> Void) async throws -> Void)?
     private let _reduce: ((State, Mutation) -> State)?
-    private let _shouldCancel: ((ActionItem, ActionItem) -> Bool)?
+    private let _shouldCancel: ((Action, Action) -> Bool)?
     
     // MARK: - Initalizer
-    public init(
+    public init( 
         initialState: State,
-        start: ((Mutator<Mutation, State>) async throws -> Void)? = nil,
-        mutate: ((State, Action, Mutator<Mutation, State>) async throws -> Void)? = nil,
+        start: ((@escaping (Mutation) -> Void) async throws -> Void)? = nil,
+        mutate: ((State, Action, @escaping (Mutation) -> Void) async throws -> Void)? = nil,
         reduce: ((State, Mutation) -> State)? = nil,
-        shouldCancel: (((state: State, action: Action), (state: State, action: Action)) -> Bool)? = nil
+        shouldCancel: ((Action, Action) -> Bool)? = nil
     ) {
         self.initialState = initialState
         
@@ -93,12 +100,11 @@ open class ProxyReduce<R: Reduce>: Reduce {
     convenience init(_ reduce: R) {
         self.init(
             initialState: reduce.initialState,
-            start: { mutator in
-                reduce.mutator = mutator
-                try await reduce.start(with: mutator)
+            start: { _ in
+                try await reduce.start()
             },
-            mutate: { state, action, _ in
-                try await reduce.mutate(state: state, action: action)
+            mutate: { _, action, _ in
+                try await reduce.mutate(action: action)
             },
             reduce: { state, mutation in
                 reduce.reduce(state: state, mutation: mutation)
@@ -107,28 +113,37 @@ open class ProxyReduce<R: Reduce>: Reduce {
                 reduce.shouldCancel(current, upcoming)
             }
         )
+        
+        _mutator.deallocate()
+        isMutatorAllocated = false
+        
+        _mutator = withUnsafeMutablePointer(to: &reduce.mutator) { $0 }
     }
     
     // MARK: - Lifecycle
-    open func start(with mutator: Mutator<Mutation, State>) async throws {
-        self.mutator = mutator
-        try await _start?(mutator)
+    open func start() async throws {
+        try await _start?({ [weak self] mutation in self?.mutator?(mutation) })
     }
     
-    open func mutate(state: State, action: Action) async throws {
-        guard let mutator else { return }
-        try await _mutate?(state, action, mutator)
+    open func mutate(action: Action) async throws {
+        try await _mutate?(currentState, action, { [weak self] mutation in self?.mutator?(mutation) })
     }
     
     open func reduce(state: State, mutation: Mutation) -> State {
         _reduce?(state, mutation) ?? state
     }
     
-    open func shouldCancel(_ current: ActionItem, _ upcoming: ActionItem) -> Bool {
+    open func shouldCancel(_ current: Action, _ upcoming: Action) -> Bool {
         _shouldCancel?(current, upcoming) ?? false
     }
     
     // MARK: - Public
     
     // MARK: - Private
+    
+    deinit {
+        if isMutatorAllocated {
+            _mutator.deallocate()
+        }
+    }
 }

@@ -278,7 +278,7 @@ final class ReducerTests: XCTestCase {
                 }
             },
             shouldCancel: { current, upcoming in
-                current.action == upcoming.action
+                current == upcoming
             }
         ))
         
@@ -298,13 +298,13 @@ final class ReducerTests: XCTestCase {
     
     func test_that_count_increases_when_proxy_mutate_in_start() async throws {
         // Given
+        var cancellable: AnyCancellable? = nil
         let reducer = Reducer<TimerReduce>(proxy: .init(
             initialState: .init(count: 0),
-            start: { mutator in
-                Timer.publish(every: 0.1, on: .main, in: .default)
+            start: { mutate in
+                cancellable = Timer.publish(every: 0.1, on: .main, in: .default)
                     .autoconnect()
-                    .sink { _ in mutator(.increase) }
-                    .store(in: &mutator.cancellableBag)
+                    .sink { _ in mutate(.increase) }
             },
             reduce: { state, mutation in
                 var state = state
