@@ -24,7 +24,7 @@
 ## Swift Package Manager
 ```swift
 dependencies: [
-    .package(url: "https://github.com/wlsdms0122/Reducer.git", exact: "1.4.0")
+    .package(url: "https://github.com/wlsdms0122/Reducer.git", .upToNextMajor(from: "2.0.0"))
 ]
 ```
 
