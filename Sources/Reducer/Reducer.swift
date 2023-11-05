@@ -45,9 +45,12 @@ final class TaskBag<Item> {
     func store(_ item: TaskItem) {
         items.insert(item)
         
+        let ref = UnsafeMutablePointer<Set<TaskItem>?>.allocate(capacity: 1)
+        ref.pointee = items
+        
         Task {
             await item.task.value
-            items.remove(item)
+            ref.pointee?.remove(item)
         }
     }
     
