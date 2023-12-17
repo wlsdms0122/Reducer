@@ -28,4 +28,16 @@ public extension Binding {
             set: { set($0) }
         )
     }
+    
+    static func object<T: ObservableObject, Origin>(
+        _ object: T,
+        path: KeyPath<T, Origin>,
+        get: @escaping (Origin) -> Value,
+        set: @escaping (Value) -> Void
+    ) -> Binding<Value> {
+        .init(
+            get: { get(object[keyPath: path]) },
+            set: { set($0) }
+        )
+    }
 }
