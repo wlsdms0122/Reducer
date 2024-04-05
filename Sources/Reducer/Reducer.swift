@@ -39,7 +39,7 @@ final class TaskBag<Item> {
     }
     
     // MARK: - Property
-    private var items = Set<TaskItem>()
+    private(set) var items = Set<TaskItem>()
     
     // MARK: - Public
     func store(_ item: TaskItem) {

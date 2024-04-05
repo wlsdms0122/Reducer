@@ -9,7 +9,6 @@ import XCTest
 @testable import Reducer
 import Combine
 
-@MainActor
 final class TaskBagTests: XCTestCase {
     // MARK: - Property
     

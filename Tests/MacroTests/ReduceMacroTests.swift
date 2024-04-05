@@ -14,7 +14,6 @@ let testMacros: [String: Macro.Type] = [
     "Reduce": ReduceMacro.self,
 ]
 
-@MainActor
 final class ReduceMacroTests: XCTestCase {
     // MARK: - Property
     
