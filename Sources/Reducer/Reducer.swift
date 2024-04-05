@@ -65,6 +65,7 @@ final class TaskBag<Item> {
     }
 }
 
+@MainActor
 open class Reducer<R: Reduce>: ObservableObject, Mutable {
     public typealias Action = R.Action
     public typealias Mutation = R.Mutation
@@ -96,8 +97,10 @@ open class Reducer<R: Reduce>: ObservableObject, Mutable {
     
     // MARK: - Lifecycle
     open func mutate(_ mutation: Mutation) {
-        // Reduce state from mutation.
-        state = reduce(state: state, mutation: mutation)
+        Task { @MainActor in
+            // Reduce state from mutation.
+            state = reduce(state: state, mutation: mutation)
+        }
     }
     
     // MARK: - Public
