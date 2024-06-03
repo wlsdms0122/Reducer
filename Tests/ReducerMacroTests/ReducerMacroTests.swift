@@ -1,5 +1,5 @@
 //
-//  ReduceMacroTests.swift
+//  ReducerMacroTests.swift
 //
 //
 //  Created by JSilver on 2023/06/09.
@@ -14,7 +14,7 @@ let testMacros: [String: Macro.Type] = [
     "Reduce": ReduceMacro.self,
 ]
 
-final class ReduceMacroTests: XCTestCase {
+final class ReducerMacroTests: XCTestCase {
     // MARK: - Property
     
     // MARK: - Lifecycle
