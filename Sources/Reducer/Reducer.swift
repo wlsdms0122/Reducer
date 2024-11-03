@@ -115,7 +115,11 @@ open class Reducer<R: Reduce>: ObservableObject, Mutable {
             action,
             with: Task { @MainActor in
                 // Mutate state from action.
-                try? await reduce.mutate(action: action)
+                do {
+                    try await reduce.mutate(action: action)
+                } catch {
+                    await reduce.error(error, action: action)
+                }
             }
         ))
     }

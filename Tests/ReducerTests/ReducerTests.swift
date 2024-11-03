@@ -9,6 +9,7 @@ import XCTest
 @testable import Reducer
 import Combine
 
+@MainActor
 final class ReducerTests: XCTestCase {
     // MARK: - Property
     
@@ -22,7 +23,6 @@ final class ReducerTests: XCTestCase {
     }
     
     // MARK: - Test
-    @MainActor
     func test_that_count_increases_when_receiving_increase_action() async throws {
         // Given
         let reducer = Reducer(
@@ -46,7 +46,6 @@ final class ReducerTests: XCTestCase {
         XCTAssertEqual(result, [0, 1, 2])
     }
     
-    @MainActor
     func test_that_count_does_not_mutate_when_receiving_same_action_twice() async throws {
         // Given
         let reducer = Reducer(
@@ -70,7 +69,6 @@ final class ReducerTests: XCTestCase {
         XCTAssertEqual(result, [0, 1])
     }
     
-    @MainActor
     func test_that_all_action_cancelled_when_reducer_deinit() async throws {
         // Given
         var reducer: Reducer<CountIncreaseReduce>? = Reducer(
@@ -96,7 +94,6 @@ final class ReducerTests: XCTestCase {
         XCTAssertEqual(result, [0])
     }
     
-    @MainActor
     func test_that_count_increases_when_mutate_in_start() async throws {
         // Given
         let reducer = Reducer(TimerReduce(
@@ -113,7 +110,6 @@ final class ReducerTests: XCTestCase {
         XCTAssertGreaterThan(result.last ?? 0, 0)
     }
     
-    @MainActor
     func test_that_count_increases_when_await_mutate_in_start() async throws {
         // Given
         let reducer = Reducer(AwaitStartReduce(
@@ -130,7 +126,6 @@ final class ReducerTests: XCTestCase {
         XCTAssertEqual(result, [0, 1])
     }
     
-    @MainActor
     func test_that_reducer_should_be_able_to_assign_proxy_reduce() async throws {
         // Given
         var reducer = Reducer(CountIncreaseReduce(
@@ -170,7 +165,6 @@ final class ReducerTests: XCTestCase {
         XCTAssertEqual(result, [0, 10])
     }
     
-    @MainActor
     func test_that_initial_count_is_100_when_proxy_set_initial_count() async throws {
         // Given
         let reducer = Reducer<CountIncreaseReduce>(proxy: .init(
@@ -189,7 +183,6 @@ final class ReducerTests: XCTestCase {
         XCTAssertEqual(result, [100])
     }
     
-    @MainActor
     func test_that_count_increases_when_proxy_receiving_increase_action() async throws {
         // Given
         let reducer = Reducer<CountIncreaseReduce>(proxy: .init(
@@ -226,7 +219,6 @@ final class ReducerTests: XCTestCase {
         XCTAssertEqual(result, [0, 1])
     }
     
-    @MainActor
     func test_that_count_increases_10_when_proxy_receiving_increase_action() async throws {
         // Given
         let reducer = Reducer<CountIncreaseReduce>(proxy: .init(
@@ -264,7 +256,6 @@ final class ReducerTests: XCTestCase {
         XCTAssertEqual(result, [0, 10, 20])
     }
     
-    @MainActor
     func test_that_count_does_not_mutate_when_proxy_same_action_twice() async throws {
         // Given
         let reducer = Reducer<CountIncreaseReduce>(proxy: .init(
@@ -304,7 +295,6 @@ final class ReducerTests: XCTestCase {
         XCTAssertEqual(result, [0, 1])
     }
     
-    @MainActor
     func test_that_count_increases_when_proxy_mutate_in_start() async throws {
         // Given
         var cancellable: AnyCancellable? = nil
@@ -336,7 +326,6 @@ final class ReducerTests: XCTestCase {
         XCTAssertGreaterThan(result.last ?? 0, 0)
     }
     
-    @MainActor
     func test_that_reducer_can_assign_proxy_inherited_reduce() async throws {
         // Given
         let reducer = Reducer<CountIncreaseReduce>(
@@ -356,5 +345,23 @@ final class ReducerTests: XCTestCase {
         
         // Then
         XCTAssertEqual(result, [0, 10])
+    }
+    
+    func test_that_count_increases_when_error_is_thrown_in_mutation() async throws {
+        // Given
+        let sut = Reducer(ErrorReduce())
+        
+        // When
+        Task {
+            sut.action(.occurError(TestError("increase count")))
+        }
+        
+        let result = try await wait(
+            sut.$state.map(\.count),
+            timeout: 1
+        )
+        
+        // Then
+        XCTAssertEqual(result, [0, 1])
     }
 }
